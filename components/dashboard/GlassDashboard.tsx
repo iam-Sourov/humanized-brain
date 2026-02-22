@@ -51,12 +51,12 @@ export function GlassDashboard() {
 
       toast.dismiss(humanizeToastId);
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Humanization failed');
+        throw new Error(data.details || data.error || 'Humanization failed');
       }
 
-      const data = await response.json();
       setProgress(70);
 
       // 3. Reformatting Phase

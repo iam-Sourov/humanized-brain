@@ -46,9 +46,16 @@ export function SplitViewEditor() {
       <ResizablePanel defaultSize={50} minSize={30}>
         <div className="h-full p-8 overflow-auto bg-purple-500/5">
           <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-emerald-400">
-              <CheckCircle2 className="w-4 h-4" />
-              Humanized Output (100% Score)
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-emerald-400">
+                <CheckCircle2 className="w-4 h-4" />
+                Humanized Output
+              </div>
+              {humanizedText?.includes('[NOTE:') && (
+                <span className="px-2 py-0.5 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-[10px] text-yellow-500 font-bold uppercase tracking-tighter">
+                  Smart Simulation
+                </span>
+              )}
             </div>
             {status !== 'completed' && status !== 'idle' && (
               <motion.span
