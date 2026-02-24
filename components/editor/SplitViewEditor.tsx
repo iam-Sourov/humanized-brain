@@ -14,6 +14,7 @@ export function SplitViewEditor() {
   const originalText = useDocumentStore((state) => state.originalText);
   const humanizedText = useDocumentStore((state) => state.humanizedText);
   const status = useDocumentStore((state) => state.status);
+  const mode = useDocumentStore((state) => state.mode);
 
   return (
     <ResizablePanelGroup orientation="horizontal" className="h-full rounded-[32px] overflow-hidden">
@@ -52,12 +53,13 @@ export function SplitViewEditor() {
                 <CheckCircle2 className="w-4 h-4" />
                 Humanized Output
               </div>
-              {humanizedText?.includes('[NOTE:') && (
+              {mode === 'simulation' && (
                 <span className="px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-[10px] text-amber-500 font-bold uppercase tracking-wider backdrop-blur-sm">
                   Smart Simulation
                 </span>
               )}
             </div>
+
             {status !== 'completed' && status !== 'idle' && (
               <motion.span
                 animate={{ opacity: [0.4, 1, 0.4] }}

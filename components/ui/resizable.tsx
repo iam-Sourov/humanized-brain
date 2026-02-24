@@ -25,7 +25,6 @@ function ResizablePanel({ ...props }: ResizablePrimitive.PanelProps) {
 }
 
 function ResizableHandle({
-  withHandle,
   className,
   ...props
 }: ResizablePrimitive.SeparatorProps & {
@@ -42,5 +41,6 @@ function ResizableHandle({
     />
   )
 }
+
 
 export { ResizableHandle, ResizablePanel, ResizablePanelGroup }

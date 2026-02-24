@@ -22,6 +22,7 @@ export function GlassDashboard() {
   const setProgress = useDocumentStore((state) => state.setProgress);
   const setOriginalText = useDocumentStore((state) => state.setOriginalText);
   const setHumanizedText = useDocumentStore((state) => state.setHumanizedText);
+  const setMode = useDocumentStore((state) => state.setMode);
 
   const onDrop = async (acceptedFiles: File[]) => {
     const uploadedFile = acceptedFiles[0];
@@ -41,7 +42,7 @@ export function GlassDashboard() {
 
       // 2. Humanization Phase
       setStatus('humanizing');
-      const humanizeToastId = toast.loading("Rewriting with Claude 3.5 Sonnet...");
+      const humanizeToastId = toast.loading("Analyzing linguistic patterns...");
 
       const response = await fetch('/api/humanize', {
         method: 'POST',
@@ -57,6 +58,15 @@ export function GlassDashboard() {
         throw new Error(data.details || data.error || 'Humanization failed');
       }
 
+      setMode(data.mode);
+
+      if (data.mode === 'simulation') {
+
+        toast.warning("Running in simulation mode. Add GEMINI_API_KEY for premium results.", {
+          duration: 5000,
+        });
+      }
+
       setProgress(70);
 
       // 3. Reformatting Phase
@@ -67,11 +77,12 @@ export function GlassDashboard() {
       // 4. Completion
       setStatus('completed');
       setProgress(100);
-      toast.success("Humanization complete!");
-    } catch (error: any) {
+      toast.success(data.mode === 'simulation' ? "Simulation complete!" : "Premium humanization complete!");
+    } catch (error) {
       console.error(error);
       setStatus('error');
-      toast.error(error.message || "An error occurred during processing.");
+      const errorMessage = error instanceof Error ? error.message : "An error occurred during processing.";
+      toast.error(errorMessage);
     }
   };
 
@@ -87,9 +98,11 @@ export function GlassDashboard() {
       window.URL.revokeObjectURL(url);
       toast.success("Download started!");
     } catch (error) {
+      console.error("Download Error:", error);
       toast.error("Failed to prepare download.");
     }
   };
+
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { humanizeText, verifyAndRefine } from '@/lib/ai/claude';
+import { humanizeText, verifyAndRefine } from '@/lib/ai/humanizer';
 
 export async function POST(req: NextRequest) {
   try {
@@ -24,15 +24,17 @@ export async function POST(req: NextRequest) {
       mode: isSimulation ? 'simulation' : 'ai-premium',
       metadata: {
         fileType,
-        engine: isSimulation ? 'Linguistic-Sim-V1' : 'Gemini-1.5-Flash',
+        engine: isSimulation ? 'Linguistic-Sim-V1' : 'AI-Premium-Nexus',
         appliedStyles: ['high-perplexity', 'varied-burstiness']
       }
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Humanization Error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Processing Error';
     return NextResponse.json({ 
       error: 'Processing Error',
-      details: error.message 
+      details: errorMessage 
     }, { status: 500 });
   }
 }
+

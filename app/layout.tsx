@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Inter } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
-
 const geistSans = Geist({
+
   variable: "--font-geist-sans",
   subsets: ["latin"],
 });
@@ -19,8 +18,19 @@ import { ThemeProvider } from "next-themes";
 
 export const metadata: Metadata = {
   title: "HumanizedBrain | Premium AI Document Humanizer",
-  description: "Bypass AI detection with 100% format preservation using Claude 3.5 Sonnet.",
+  description: "Bypass AI detection with 100% format preservation using advanced linguistic models.",
+  keywords: ["AI Humanizer", "Bypass AI Detection", "Claude 3.5 Sonnet", "Gemini 1.5 Pro", "Document Refinement"],
+  authors: [{ name: "HumanizedBrain Team" }],
+  viewport: "width=device-width, initial-scale=1",
+  openGraph: {
+    title: "HumanizedBrain | Premium AI Document Humanizer",
+    description: "Give your AI text a human soul with 100% format preservation.",
+    type: "website",
+    locale: "en_US",
+    siteName: "HumanizedBrain",
+  },
 };
+
 
 export default function RootLayout({
   children,
