@@ -16,63 +16,66 @@ export function SplitViewEditor() {
   const status = useDocumentStore((state) => state.status);
 
   return (
-    <ResizablePanelGroup orientation="horizontal" className="h-full">
+    <ResizablePanelGroup orientation="horizontal" className="h-full rounded-[32px] overflow-hidden">
       <ResizablePanel defaultSize={50} minSize={30}>
-        <div className="h-full p-8 border-r border-white/10 overflow-auto bg-black/40">
-          <div className="flex items-center gap-2 mb-6 text-xs font-bold uppercase tracking-widest text-red-400">
+        <div className="h-full p-8 md:p-10 border-r border-white/5 overflow-auto bg-[#141010]">
+          <div className="flex items-center gap-2 mb-8 text-xs font-bold uppercase tracking-[0.2em] text-red-400/80">
             <AlertCircle className="w-4 h-4" />
-            Original Document (AI Detected)
+            Original Text (AI Assessed)
           </div>
-          <div className="text-gray-300 leading-relaxed space-y-4">
+          <div className="text-gray-400/90 leading-loose space-y-4 font-serif text-lg">
             {originalText ? (
               originalText.split('. ').map((sentence, i) => (
-                <span key={i} className="bg-red-500/10 border-b border-red-500/30 px-1 rounded-sm">
+                <span key={i} className="bg-red-500/5 hover:bg-red-500/10 transition-colors border-b border-red-500/20 px-1.5 py-0.5 rounded-md inline-block mb-1">
                   {sentence}{sentence.endsWith('.') ? '' : '.'}{' '}
                 </span>
               ))
             ) : (
-              <div className="animate-pulse flex space-y-4 flex-col">
-                <div className="h-4 bg-white/5 rounded w-3/4" />
-                <div className="h-4 bg-white/5 rounded w-full" />
-                <div className="h-4 bg-white/5 rounded w-5/6" />
+              <div className="animate-pulse flex space-y-6 flex-col mt-4">
+                <div className="h-3 bg-white/5 rounded-full w-3/4" />
+                <div className="h-3 bg-white/5 rounded-full w-full" />
+                <div className="h-3 bg-white/5 rounded-full w-5/6" />
+                <div className="h-3 bg-white/5 rounded-full w-4/5" />
               </div>
             )}
           </div>
         </div>
       </ResizablePanel>
 
-      <ResizableHandle className="w-px bg-white/10 hover:bg-purple-500/50 transition-colors cursor-col-resize" />
+      <ResizableHandle className="w-1 bg-white/5 hover:bg-rose-500/50 active:bg-rose-500 transition-colors cursor-col-resize relative z-10" />
 
       <ResizablePanel defaultSize={50} minSize={30}>
-        <div className="h-full p-8 overflow-auto bg-purple-500/5">
-          <div className="flex items-center justify-between mb-6">
+        <div className="h-full p-8 md:p-10 overflow-auto bg-gradient-to-br from-rose-500/[0.03] to-orange-500/[0.03]">
+          <div className="flex justify-between items-start mb-8">
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-emerald-400">
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-emerald-400">
                 <CheckCircle2 className="w-4 h-4" />
                 Humanized Output
               </div>
               {humanizedText?.includes('[NOTE:') && (
-                <span className="px-2 py-0.5 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-[10px] text-yellow-500 font-bold uppercase tracking-tighter">
+                <span className="px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-[10px] text-amber-500 font-bold uppercase tracking-wider backdrop-blur-sm">
                   Smart Simulation
                 </span>
               )}
             </div>
             {status !== 'completed' && status !== 'idle' && (
               <motion.span
-                animate={{ opacity: [0.5, 1, 0.5] }}
-                transition={{ duration: 1.5, repeat: Infinity }}
-                className="text-[10px] text-purple-400 font-mono"
+                animate={{ opacity: [0.4, 1, 0.4] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                className="text-[11px] text-rose-400/80 font-medium tracking-wider italic flex items-center gap-2 bg-rose-500/10 px-3 py-1.5 rounded-full"
               >
-                PROCESSING_PIPELINE_V2...
+                <div className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" />
+                rafting natural flow...
               </motion.span>
             )}
           </div>
-          <div className="text-gray-100 leading-relaxed whitespace-pre-wrap">
+          <div className="text-gray-200 leading-loose whitespace-pre-wrap font-serif text-lg selection:bg-rose-500/30">
             {humanizedText || (
-              <div className="space-y-4">
-                <div className="h-4 bg-purple-500/10 rounded w-full animate-pulse" />
-                <div className="h-4 bg-purple-500/10 rounded w-5/6 animate-pulse" style={{ animationDelay: '0.2s' }} />
-                <div className="h-4 bg-purple-500/10 rounded w-full animate-pulse" style={{ animationDelay: '0.4s' }} />
+              <div className="space-y-6 mt-4">
+                <div className="h-3 bg-rose-500/10 rounded-full w-full animate-pulse" />
+                <div className="h-3 bg-rose-500/10 rounded-full w-5/6 animate-pulse" style={{ animationDelay: '0.2s' }} />
+                <div className="h-3 bg-rose-500/10 rounded-full w-full animate-pulse" style={{ animationDelay: '0.4s' }} />
+                <div className="h-3 bg-rose-500/10 rounded-full w-2/3 animate-pulse" style={{ animationDelay: '0.6s' }} />
               </div>
             )}
           </div>
