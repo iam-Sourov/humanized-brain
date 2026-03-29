@@ -44,10 +44,26 @@ Note: In this preview version, we've analyzed the PDF structure and metadata. Fu
 
 export async function createDownloadableFile(originalFile: File, newText: string): Promise<Blob> {
   if (originalFile.type === 'application/pdf') {
-    // For prototype, we'll return a text file with the humanized content instead of the original PDF
-    return new Blob([newText], { type: 'text/markdown' });
+    const pdfDoc = await PDFDocument.create();
+    
+    // STRIP METADATA: Explicitly remove all AI-generated or identifiable properties
+    pdfDoc.setTitle('');
+    pdfDoc.setAuthor('');
+    pdfDoc.setSubject('');
+    pdfDoc.setKeywords([]);
+    pdfDoc.setCreator('CleanDoc'); 
+    pdfDoc.setProducer('CleanDoc');
+
+    const page = pdfDoc.addPage();
+    // Using a simplistic embedding just for the MVP
+    // For a robust system we'd use fontkit to embed our brutalist font.
+    page.drawText(newText.substring(0, 1500) + (newText.length > 1500 ? '...' : ''), { x: 50, y: page.getHeight() - 50, size: 12 });
+    
+    const pdfBytes = await pdfDoc.save();
+    return new Blob([pdfBytes as any], { type: 'application/pdf' });
   } else {
-    // Return formatted text as DOCX type blob
-    return new Blob([newText], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+    // Return formatted text as TXT to ensure 100% metadata stripping for Docx fallback.
+    // In production, we'd use the 'docx' package to build a fresh, un-watermarked DOCX document structure.
+    return new Blob([newText], { type: 'text/plain' });
   }
 }
