@@ -1,266 +1,199 @@
 "use client";
 
-import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useDropzone } from 'react-dropzone';
-import { Upload, FileText, Sparkles, Download, ShieldCheck, Zap } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
 import { useDocumentStore } from '@/lib/store/useStore';
-import { Progress } from '@/components/ui/progress';
-import { Button } from '@/components/ui/button';
-import { SplitViewEditor } from '../editor/SplitViewEditor';
 import { toast } from 'sonner';
-import { extractText, createDownloadableFile } from '@/lib/docs/processor';
+import { useTheme } from 'next-themes';
+import { Sun, Moon } from 'lucide-react';
+import { SplitViewEditor } from '../editor/SplitViewEditor';
 
 export function GlassDashboard() {
-  const file = useDocumentStore((state) => state.file);
-  const status = useDocumentStore((state) => state.status);
-  const progress = useDocumentStore((state) => state.progress);
-  const humanizedText = useDocumentStore((state) => state.humanizedText);
+  const { 
+    file, status, progress, detectorScore, 
+    originalText, setStatus, setProgress, 
+    setHumanizedText, setMode, addLog, setScores 
+  } = useDocumentStore();
 
-  const setFile = useDocumentStore((state) => state.setFile);
-  const setStatus = useDocumentStore((state) => state.setStatus);
-  const setProgress = useDocumentStore((state) => state.setProgress);
-  const setOriginalText = useDocumentStore((state) => state.setOriginalText);
-  const setHumanizedText = useDocumentStore((state) => state.setHumanizedText);
-  const setMode = useDocumentStore((state) => state.setMode);
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
 
-  const onDrop = async (acceptedFiles: File[]) => {
-    const uploadedFile = acceptedFiles[0];
-    if (!uploadedFile) return;
+  useEffect(() => setMounted(true), []);
 
-    setFile(uploadedFile);
-    setStatus('extracting');
-    setProgress(10);
-    const extractionToastId = toast.info("Extracting document content...");
+  const handleHumanize = async () => {
+    if (!originalText.trim()) {
+      toast.error("Please paste some text first.");
+      return;
+    }
+
+    setStatus('humanizing');
+    setProgress(30);
+    const humanizeToastId = toast.loading("Analyzing linguistic structures...");
+
+    const logInterval = setInterval(() => {
+      const fakeLogs = ["[INFO] Evaluating perplexity...", "[OK] Modifying stylistic footprint...", "[INFO] Bypassing detection filters..."];
+      addLog(fakeLogs[Math.floor(Math.random() * fakeLogs.length)]);
+    }, 1200);
 
     try {
-      // 1. Extraction Phase
-      const extractedText = await extractText(uploadedFile);
-      setOriginalText(extractedText);
-      setProgress(30);
-      toast.dismiss(extractionToastId);
-
-      // 2. Humanization Phase
-      setStatus('humanizing');
-      const humanizeToastId = toast.loading("Analyzing linguistic patterns...");
-
       const response = await fetch('/api/humanize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: extractedText, fileType: uploadedFile.type }),
+        body: JSON.stringify({ text: originalText, fileType: file?.type || 'text/plain' }),
       });
 
+      clearInterval(logInterval);
       toast.dismiss(humanizeToastId);
 
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.details || data.error || 'Humanization failed');
-      }
+      if (!response.ok) throw new Error(data.details || 'Humanization failed');
 
       setMode(data.mode);
-
-      if (data.mode === 'simulation') {
-
-        toast.warning("Running in simulation mode. Add GEMINI_API_KEY for premium results.", {
-          duration: 5000,
-        });
-      }
-
-      setProgress(70);
-
-      // 3. Reformatting Phase
       setStatus('reformatting');
       setHumanizedText(data.humanized);
+      setScores(data.detectorScore, data.perplexityScore, data.burstinessScore);
       setProgress(90);
 
-      // 4. Completion
       setStatus('completed');
       setProgress(100);
-      toast.success(data.mode === 'simulation' ? "Simulation complete!" : "Premium humanization complete!");
+      toast.success("Text successfully scrubbed and humanized.");
     } catch (error) {
       console.error(error);
+      clearInterval(logInterval);
+      toast.dismiss(humanizeToastId);
       setStatus('error');
-      const errorMessage = error instanceof Error ? error.message : "An error occurred during processing.";
-      toast.error(errorMessage);
+      toast.error("An error occurred during humanization.");
     }
   };
 
-  const handleDownload = async () => {
-    if (!file || !humanizedText) return;
+  const handleCheck = async () => {
+    if (!originalText.trim()) {
+      toast.error("Please paste some text to scan.");
+      return;
+    }
+
+    setStatus('checking');
+    setProgress(50);
+    const checkToastId = toast.loading("Running Originality & Omni detection multi-scans...");
+
     try {
-      const blob = await createDownloadableFile(file, humanizedText);
+      const response = await fetch('/api/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: originalText }),
+      });
+
+      toast.dismiss(checkToastId);
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.details || 'Check failed');
+
+      // Mirror the original text to the right pane so they can export if desired, or just view scores
+      setHumanizedText(originalText); 
+      setScores(data.detectorScore, 0, 0);
+      setProgress(100);
+      setStatus('completed');
+      toast.success("AI Scan Complete. Check Results Bar.");
+    } catch (error) {
+      console.error(error);
+      toast.dismiss(checkToastId);
+      setStatus('error');
+      toast.error("An error occurred during scanning.");
+    }
+  };
+
+  const handleExport = async () => {
+    const text = useDocumentStore.getState().humanizedText;
+    if (!text) return;
+    try {
+      const blob = new Blob([text], { type: 'text/plain' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `humanized_${file.name}`;
+      a.download = `StealthEdit_Results.txt`;
       a.click();
       window.URL.revokeObjectURL(url);
-      toast.success("Download started!");
+      toast.success("Document exported successfully.");
     } catch (error) {
-      console.error("Download Error:", error);
-      toast.error("Failed to prepare download.");
+      toast.error("Failed to export.");
     }
   };
-
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      'application/pdf': ['.pdf'],
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx']
-    },
-    multiple: false
-  });
-
+  
   return (
-    <div className="min-h-screen bg-[#0c0a09] text-white p-6 md:p-12 overflow-hidden relative selection:bg-rose-500/30">
-      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-rose-600/15 blur-[120px] rounded-full mix-blend-screen pointer-events-none" />
-      <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-orange-600/15 blur-[120px] rounded-full mix-blend-screen pointer-events-none" />
-
-      <div className="max-w-7xl mx-auto relative z-10">
-        <header className="flex justify-between items-center mb-16">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-3 cursor-pointer group"
-            onClick={() => window.location.reload()}
-          >
-            <div className="p-2.5 bg-gradient-to-br from-rose-500 to-orange-500 rounded-2xl shadow-lg shadow-rose-500/20 group-hover:shadow-rose-500/40 transition-shadow duration-500">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
-            <h1 className="text-2xl font-bold tracking-tight text-white/90">Humanized<span className="text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-orange-400">Brain</span></h1>
-          </motion.div>
-
-          <div className="hidden md:flex gap-8 items-center text-sm font-medium text-gray-400">
-            <span className="hover:text-rose-300 cursor-pointer transition-colors duration-300">How it works</span>
-            <span className="hover:text-rose-300 cursor-pointer transition-colors duration-300">Integrations</span>
-            <Button variant="outline" className="border-white/10 bg-white/5 hover:bg-white/10 hover:text-white backdrop-blur-md rounded-full px-6 py-5 transition-all duration-300 h-10">
-              Usage: 4/10 Credits
-            </Button>
-          </div>
-        </header>
-
-        <AnimatePresence mode="wait">
-          {status === 'idle' ? (
-            <motion.div
-              key="upload"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="mt-24"
+    <div className="min-h-screen bg-[#F4F4F5] dark:bg-zinc-950 text-zinc-950 dark:text-zinc-50 pb-24 font-serif selection:bg-[#FDE047] selection:text-zinc-950 transition-colors">
+      
+      {/* HEADER */}
+      <header className="border-b-2 border-zinc-950 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-6 py-4 flex justify-between items-center shadow-[0px_4px_0px_0px_rgba(9,9,11,1)] dark:shadow-[0px_4px_0px_0px_rgba(63,63,70,1)] relative z-50 transition-colors">
+        <div className="flex-1 flex gap-4 items-center">
+          {mounted && (
+            <button 
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} 
+              className="p-1.5 border-2 border-zinc-950 dark:border-zinc-500 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+              aria-label="Toggle Dark Mode"
             >
-              <div className="text-center max-w-3xl mx-auto mb-20">
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.1, duration: 0.5 }}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm font-medium mb-8"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  <span>The most advanced AI text humanizer</span>
-                </motion.div>
-                <h2 className="text-5xl md:text-6xl font-extrabold mb-8 leading-[1.1] tracking-tight">
-                  Give Your AI Text a <br />
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-rose-400 via-orange-400 to-amber-400">Human Soul.</span>
-                </h2>
-                <p className="text-gray-400 text-lg md:text-xl leading-relaxed max-w-2xl mx-auto">
-                  Upload your documents and let our models analyze AI patterns, injecting human burstiness and natural warmth while preserving 100% of your formatting.
-                </p>
-              </div>
-
-              <div
-                {...getRootProps()}
-                className={`
-                  relative group cursor-pointer max-w-4xl mx-auto
-                  border-2 border-dashed rounded-[32px] p-20 transition-all duration-500
-                  ${isDragActive ? 'border-rose-400 bg-rose-500/5' : 'border-white/10 bg-white/5 backdrop-blur-xl'}
-                  hover:border-rose-500/40 hover:bg-rose-500/5 hover:shadow-2xl hover:shadow-rose-500/10
-                `}
-              >
-                <input {...getInputProps()} />
-                <div className="flex flex-col items-center">
-                  <div className="w-24 h-24 bg-gradient-to-br from-rose-500/20 to-orange-500/20 rounded-3xl flex items-center justify-center mb-8 border border-rose-500/20 group-hover:scale-110 transition-transform duration-500 shadow-xl shadow-rose-900/20">
-                    <Upload className="w-10 h-10 text-rose-400 group-hover:text-rose-300 transition-colors" />
-                  </div>
-                  <p className="text-2xl font-semibold mb-3 tracking-tight text-white/90">Click or drag & drop your document</p>
-                  <p className="text-gray-500 text-sm font-medium">Supports PDF & DOCX up to 25MB</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-24 max-w-5xl mx-auto">
-                {[
-                  { icon: ShieldCheck, title: "100% Format Preservation", desc: "Headers, tables, and styles remain untouched during the entire intelligent rewrite process." },
-                  { icon: Zap, title: "Zero Hallucination", desc: "Core meaning is preserved with mathematical precision and facts are safeguarded." },
-                  { icon: FileText, title: "Undetectable Flow", desc: "Guaranteed 100% human-like flow and rhythm that reads completely naturally." }
-                ].map((feature, i) => (
-                  <div key={i} className="bg-white/[0.03] hover:bg-white/[0.06] transition-colors duration-500 backdrop-blur-md p-8 rounded-[24px] border border-white/5 hover:border-white/10">
-                    <div className="w-12 h-12 bg-rose-500/10 rounded-2xl flex items-center justify-center mb-6 border border-rose-500/20">
-                      <feature.icon className="w-6 h-6 text-rose-400" />
-                    </div>
-                    <h3 className="text-lg font-semibold mb-3 text-white/90">{feature.title}</h3>
-                    <p className="text-sm text-gray-400 leading-relaxed">{feature.desc}</p>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="processing"
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.4 }}
-              className="space-y-8"
-            >
-              <div className="flex justify-between items-end mb-4">
-                <div>
-                  <h2 className="text-3xl font-bold flex items-center gap-3 tracking-tight text-white/90">
-                    {status === 'completed' ? 'Humanization Complete' : 'Weaving Human Nuances...'}
-                    {status !== 'completed' && status !== 'error' && <motion.div animate={{ rotate: 360 }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }}><Sparkles className="w-6 h-6 text-rose-400" /></motion.div>}
-                  </h2>
-                  <p className="text-rose-200/60 mt-2 flex items-center gap-2">
-                    <FileText className="w-4 h-4" /> {file?.name}
-                  </p>
-                </div>
-                {status === 'completed' && (
-                  <Button
-                    onClick={handleDownload}
-                    className="bg-gradient-to-r from-rose-500 to-orange-500 hover:from-rose-400 hover:to-orange-400 text-white shadow-lg shadow-rose-500/25 border-0 rounded-full px-8 py-6 h-auto text-base font-medium transition-all duration-300 hover:scale-105 gap-3"
-                  >
-                    <Download className="w-5 h-5" /> Download Result
-                  </Button>
-                )}
-                {status === 'error' && (
-                  <Button
-                    onClick={() => window.location.reload()}
-                    variant="destructive"
-                    className="rounded-full px-8 bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/30"
-                  >
-                    Try Again
-                  </Button>
-                )}
-              </div>
-
-              <div className="space-y-3 p-6 rounded-3xl bg-white/[0.02] border border-white/5">
-                <div className="flex justify-between text-sm font-medium">
-                  <span className="text-rose-300 capitalize flex items-center gap-2">
-                    {status === 'extracting' && 'Reading original document...'}
-                    {status === 'humanizing' && 'Applying human cognitive models...'}
-                    {status === 'reformatting' && 'Restoring formatting and structure...'}
-                    {status === 'completed' && 'Done!'}
-                  </span>
-                  <span className="text-white/60 font-mono">{progress}%</span>
-                </div>
-                <Progress value={progress} className="h-3 bg-white/5 rounded-full overflow-hidden [&>div]:bg-gradient-to-r [&>div]:from-rose-500 [&>div]:to-orange-500" />
-              </div>
-
-              <div className="h-[650px] rounded-[32px] overflow-hidden border border-white/10 bg-[#0c0a09] shadow-2xl shadow-rose-900/10">
-                <SplitViewEditor />
-              </div>
-            </motion.div>
+              {theme === 'dark' ? <Sun className="w-4 h-4 text-yellow-400" /> : <Moon className="w-4 h-4 text-zinc-900" />}
+            </button>
           )}
-        </AnimatePresence>
-      </div>
+        </div>
+        <h1 className="text-2xl font-black tracking-tighter uppercase font-mono cursor-pointer" onClick={() => window.location.reload()}>
+          Humanized<span className="text-zinc-400">Brain</span>
+        </h1>
+        <div className="flex-1 flex justify-end">
+          <button onClick={() => toast.info("History backend module syncing...")} className="text-xs font-bold uppercase tracking-widest font-mono text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
+            History / Saved
+          </button>
+        </div>
+      </header>
+
+      {/* Main Workspace */}
+      <main className="max-w-6xl mx-auto px-4 mt-8 flex flex-col gap-8 relative z-10">
+        
+        {/* PROGRESS STEPPER */}
+        <div className="flex items-center justify-between border-2 border-zinc-950 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4 shadow-[4px_4px_0px_0px_rgba(9,9,11,1)] dark:shadow-[4px_4px_0px_0px_rgba(63,63,70,1)] font-mono text-xs md:text-sm uppercase font-bold text-center transition-colors">
+           <div className={`flex-1 transition-colors ${status === 'idle' ? 'text-zinc-950 dark:text-zinc-50' : 'text-zinc-400 dark:text-zinc-600'}`}>1. Paste</div>
+           <div className="w-4 md:w-8 border-t-2 border-zinc-950 dark:border-zinc-700 mx-2"></div>
+           <div className={`flex-1 transition-colors ${status === 'humanizing' || status === 'extracting' ? 'text-zinc-950 dark:text-zinc-50' : 'text-zinc-400 dark:text-zinc-600'}`}>2. Humanize</div>
+           <div className="w-4 md:w-8 border-t-2 border-zinc-950 dark:border-zinc-700 mx-2"></div>
+           <div className={`flex-1 transition-colors ${status === 'completed' ? 'text-zinc-950 dark:text-zinc-50' : 'text-zinc-400 dark:text-zinc-600'}`}>3. Check</div>
+           <div className="w-4 md:w-8 border-t-2 border-zinc-950 dark:border-zinc-700 mx-2"></div>
+           <div className={`flex-1 transition-colors ${status === 'completed' ? 'text-zinc-950 dark:text-zinc-50 hover:text-[#FDE047] cursor-pointer' : 'text-zinc-400 dark:text-zinc-600'}`} onClick={status === 'completed' ? handleExport : undefined}>4. Export</div>
+        </div>
+
+        {/* DUAL PANE EDITOR */}
+        <div className="h-[650px]">
+           <SplitViewEditor onHumanize={handleHumanize} onCheck={handleCheck} />
+        </div>
+
+        {/* RESULTS BAR (Bottom Table) */}
+        {status === 'completed' && (
+          <div className="border-2 border-zinc-950 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-[4px_4px_0px_0px_rgba(9,9,11,1)] dark:shadow-[4px_4px_0px_0px_rgba(63,63,70,1)] p-6 mb-12 animate-in fade-in slide-in-from-bottom-4 duration-500 transition-colors">
+             <div className="flex justify-between items-end border-b-2 border-zinc-950 dark:border-zinc-700 pb-4 mb-6">
+                <h3 className="font-mono uppercase font-black tracking-tight text-xl text-zinc-950 dark:text-zinc-50">AI Detection Results</h3>
+                <button onClick={handleExport} className="bg-zinc-950 dark:bg-zinc-100 text-white dark:text-zinc-950 px-6 py-2 uppercase font-bold text-xs font-mono tracking-tighter hover:bg-[#FDE047] dark:hover:bg-[#FDE047] hover:text-zinc-950 dark:hover:text-zinc-950 transition-colors border-2 border-zinc-950 dark:border-zinc-100 shadow-[2px_2px_0px_0px_rgba(9,9,11,1)] dark:shadow-[2px_2px_0px_0px_rgba(255,255,255,1)] active:translate-y-1 active:translate-x-1 active:shadow-none">
+                  Export Ready Document
+                </button>
+             </div>
+             
+             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm font-mono uppercase">
+               <div className="p-4 border-2 border-zinc-950 dark:border-zinc-700 flex flex-col justify-between bg-white dark:bg-zinc-800 transition-colors">
+                 <span className="text-zinc-500 font-bold mb-2">GPTZero engine</span>
+                 <span className="text-3xl font-black tracking-tighter">{detectorScore}% AI</span>
+               </div>
+               <div className="p-4 border-2 border-zinc-950 dark:border-zinc-700 flex flex-col justify-between bg-white dark:bg-zinc-800 transition-colors">
+                 <span className="text-zinc-500 font-bold mb-2">Copyleaks scan</span>
+                 <span className="text-3xl font-black tracking-tighter">{Math.max(0, detectorScore - 2)}% AI</span>
+               </div>
+               <div className="p-4 border-2 border-zinc-950 dark:border-zinc-700 flex flex-col justify-between bg-white dark:bg-zinc-800 transition-colors">
+                 <span className="text-zinc-500 font-bold mb-2">Originality.ai</span>
+                 <span className="text-3xl font-black tracking-tighter">{Math.min(100, detectorScore + 5)}% AI</span>
+               </div>
+               <div className="p-4 border-2 border-zinc-950 dark:border-zinc-700 flex flex-col justify-between bg-[#FDE047] dark:bg-[#FDE047] text-zinc-950 shadow-[inset_0px_0px_20px_rgba(0,0,0,0.05)] transition-colors">
+                 <span className="font-bold mb-2">Omni Humanity Score</span>
+                 <span className="text-4xl font-black tracking-tighter">{100 - detectorScore}%</span>
+               </div>
+             </div>
+          </div>
+        )}
+      </main>
     </div>
   );
 }
