@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
   --color-background: hsl(var(--background));
@@ -20,33 +21,48 @@
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
-  --radius-lg: var(--radius);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-sm: calc(var(--radius) - 4px);
+  --radius-lg: 0px;
+  --radius-md: 0px;
+  --radius-sm: 0px;
 }
 
 @layer base {
   :root {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 263.4 70% 50.4%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 263.4 70% 50.4%;
-    --radius: 0.75rem;
+    --background: 240 5% 96%; /* #F4F4F5 */
+    --foreground: 240 10% 4%; /* #09090B */
+    --card: 0 0% 100%; /* #FFFFFF */
+    --card-foreground: 240 10% 4%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 4%;
+    --primary: 240 10% 4%;
+    --primary-foreground: 240 5% 96%;
+    --secondary: 240 5% 90%;
+    --secondary-foreground: 240 10% 4%;
+    --muted: 240 5% 90%;
+    --muted-foreground: 240 5% 40%;
+    --accent: 240 5% 90%;
+    --accent-foreground: 240 10% 4%;
+    --destructive: 0 100% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 10% 4%;
+    --input: 240 10% 4%;
+    --ring: 240 10% 4%;
+    --radius: 0px;
+  }
+  
+  .dark {
+    /* Optional: Provide a brutalist dark mode if user toggles it */
+    --background: 0 0% 10%;
+    --foreground: 0 0% 95%;
+    --card: 0 0% 15%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 15%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 0 0% 95%;
+    --primary-foreground: 0 0% 10%;
+    --border: 0 0% 95%;
+    --input: 0 0% 95%;
+    --ring: 0 0% 95%;
   }
 }
 
@@ -62,13 +78,70 @@
     -moz-osx-font-smoothing: grayscale;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
+  
+  ::selection {
+    background-color: #FDE047;
+    color: #09090B;
+  }
 }
 
 /* Custom Utilities - IDE might still flag @apply here, which is safe to ignore */
 .glass-morphism {
-  @apply bg-white/5 backdrop-blur-xl border border-white/10;
+  /* Override to Brutalist */
+  @apply bg-background border-2 border-foreground shadow-[4px_4px_0_0_hsl(var(--foreground))] rounded-none;
 }
 
 .text-gradient {
-  @apply bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-400;
+  /* No smooth gradients in Brutalism */
+  @apply text-foreground bg-none font-bold uppercase;
+}
+
+.brutalist-card {
+  @apply bg-[#f4f4f4] border-2 border-[#000] shadow-[4px_4px_0px_#000] rounded-[0px] text-[#000];
+}
+
+.brutalist-button {
+  @apply bg-[#000] text-[#fff] font-[family-name:var(--font-jetbrains)] uppercase tracking-[1px] border-2 border-[#000] shadow-[4px_4px_0_0_rgba(0,0,0,1)] rounded-none hover:shadow-[2px_2px_0_0_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all;
+}
+
+.brutalist-panel {
+  @apply border-2 border-[#000] bg-[#fff] shadow-[8px_8px_0_0_rgba(0,0,0,1)];
+}
+
+.manual-panel {
+  background-color: #ffffff;
+  border: 1px solid #222222;
+  box-shadow: 4px 4px 0px #222222; /* Sharp Shadow */
+  transition: all 0.1s ease;
+}
+
+.manual-panel:active {
+  box-shadow: 0px 0px 0px #222222;
+  transform: translate(4px, 4px);
+}
+
+.font-serif {
+  font-family: var(--font-garamond), serif;
+}
+
+.font-mono {
+  font-family: var(--font-roboto-mono), monospace;
+}
+
+.stepped-animation {
+  animation: stepped-load 1s steps(4, end) infinite;
+}
+
+@keyframes stepped-load {
+  0% { transform: scaleX(0); transform-origin: left; }
+  100% { transform: scaleX(1); transform-origin: left; }
+}
+
+.blinking-cursor {
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
 }
